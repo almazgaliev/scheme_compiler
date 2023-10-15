@@ -6,6 +6,7 @@ import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.ReadPrec (reset)
 import Data.Maybe (isJust, fromMaybe)
 import Data.Either (fromRight)
+import Text.Parsec (string')
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -17,6 +18,7 @@ data LispVal
   | Number Integer
   | String String
   | Bool Bool
+  | Character Char
   deriving Show
 
 -- parseString = char '"' >> (many (noneOf "\"") >>= \ x -> char '"' >> return (String x))
@@ -50,12 +52,11 @@ anyEscaped :: Parser Char
 anyEscaped = do
   char '\\'
   char <- choice [char 't', char 'n', char '\\', char '"']
-  case char of
-    't' ->  return '\t'
-    'n' ->  return '\n'
-    '\\' -> return '\\'
-    '"' ->  return '"'
-
+  return $ case char of
+    't' ->  '\t'
+    'n' ->  '\n'
+    '\\' -> '\\'
+    '"' ->  '"'
 
 stringContent :: Parser String
 -- stringContent = many stringChar
@@ -97,8 +98,30 @@ parseNumber :: Parser LispVal
 --   return $ Number result
 parseNumber = Number . read <$> many1 digit
 
+lowerCaseCharacter :: [Parser String]
+lowerCaseCharacter = string' . (:[]) <$> ['a'.. 'z']
+
+upperCaseCharacter :: [Parser String]
+upperCaseCharacter = string' . (:[]) <$> ['A'.. 'Z']
+
+digitCharacter :: Parser String
+digitCharacter = (: []) <$> digit
+
+parseCharacter :: Parser LispVal
+parseCharacter = do
+  string "#\\"
+  ch <- choice $ [string' "newline", string' "space", string' " ", digitCharacter] ++ lowerCaseCharacter ++ upperCaseCharacter
+  return $ Character $ case ch of
+    "newline" -> '\n'
+    "space" -> ' '
+    chars -> head chars
+
+testCharacter = parse (many parseCharacter) "error" "#\\newline#\\5"
+-- >>> testCharacter
+-- Right [Character '\n',Character '5']
+ 
 parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseString <|> parseNumber
+parseExpr = parseAtom <|> parseCharacter <|> parseString <|> parseNumber 
 
 -- spaces :: Parser ()
 -- spaces = skipMany1 space
