@@ -1,12 +1,14 @@
 module Main where
 
 import Control.Monad (when)
+import Data.Either (fromRight)
+import Data.Maybe (fromMaybe, isJust, fromJust, isNothing)
+import Numeric (readFloat)
 import System.Environment
+import Text.Parsec (string')
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.ReadPrec (reset)
-import Data.Maybe (isJust, fromMaybe)
-import Data.Either (fromRight)
-import Text.Parsec (string')
+import Text.Read (readMaybe)
 
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -15,13 +17,13 @@ data LispVal
   = Atom String
   | List [LispVal]
   | DottedList [LispVal] LispVal
-  | Number Integer
+  | IntegerNumber Integer
+  | FloatNumber Float
   | String String
   | Bool Bool
   | Character Char
-  deriving Show
+  deriving (Show)
 
--- parseString = char '"' >> (many (noneOf "\"") >>= \ x -> char '"' >> return (String x))
 parseString' :: Parser LispVal
 parseString' = do
   char '"'
@@ -29,34 +31,18 @@ parseString' = do
   char '"'
   return $ String x
 
-
 stringChar :: Parser Char
 stringChar = noneOf "\""
-
--- backslashEscaped :: Parser String
--- backslashEscaped = string "\\\\" -- \\
-
--- dqEscaped :: Parser String
--- dqEscaped = string "\\\"" -- \"
-
--- nEscaped :: Parser String
--- nEscaped = string "\\n" -- \n
-
--- rEscaped :: Parser String
--- rEscaped = string "\\r" -- \r
-
--- tabEscaped :: Parser String
--- tabEscaped = string "\\t" -- \t
 
 anyEscaped :: Parser Char
 anyEscaped = do
   char '\\'
   char <- choice [char 't', char 'n', char '\\', char '"']
   return $ case char of
-    't' ->  '\t'
-    'n' ->  '\n'
+    't' -> '\t'
+    'n' -> '\n'
     '\\' -> '\\'
-    '"' ->  '"'
+    '"' -> '"'
 
 stringContent :: Parser String
 -- stringContent = many stringChar
@@ -67,8 +53,6 @@ stringContent = f <|> return ""
     rest <- stringContent
     return $ str : rest
 
-
-
 parseString :: Parser LispVal
 parseString = do
   char '"'
@@ -77,7 +61,6 @@ parseString = do
   return $ String x
 
 res = parse parseString "error" "\" abnafk\\nja\\\bn \""
-
 
 parseAtom :: Parser LispVal
 parseAtom = do
@@ -89,20 +72,31 @@ parseAtom = do
     "#f" -> Bool False
     _ -> Atom atom
 
--- TODO Измените parseNumber для поддержки стандарта Scheme для разных оснований. Вы, возможно, найдёте readOct и readHex функции полезными.
--- http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4
 parseNumber :: Parser LispVal
--- parseNumber = do
---   s <- many1 digit
---   let result = read s
---   return $ Number result
-parseNumber = Number . read <$> many1 digit
+parseNumber = IntegerNumber . read <$> many1 digit
+
+parseFloat :: Parser LispVal
+parseFloat = do
+  beforeDot' <- many digit
+  let beforeDot = if null beforeDot' then "0" else beforeDot'
+  char '.'
+  afterDot <- (if null beforeDot then many1 else many) digit
+  let a = readMaybe $ beforeDot ++ "." ++ afterDot
+  maybe (fail "no matching floating number") (return . FloatNumber) a
+
+testFloat = parse parseFloat "error" "."
+
+-- >>> testFloat
+-- Left "error" (line 1, column 2):
+-- unexpected end of input
+-- expecting digit
+-- no matching floating number
 
 lowerCaseCharacter :: [Parser String]
-lowerCaseCharacter = string' . (:[]) <$> ['a'.. 'z']
+lowerCaseCharacter = string' . (: []) <$> ['a' .. 'z']
 
 upperCaseCharacter :: [Parser String]
-upperCaseCharacter = string' . (:[]) <$> ['A'.. 'Z']
+upperCaseCharacter = string' . (: []) <$> ['A' .. 'Z']
 
 digitCharacter :: Parser String
 digitCharacter = (: []) <$> digit
@@ -116,12 +110,39 @@ parseCharacter = do
     "space" -> ' '
     chars -> head chars
 
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
+
 testCharacter = parse (many parseCharacter) "error" "#\\newline#\\5"
+
 -- >>> testCharacter
 -- Right [Character '\n',Character '5']
- 
+
+parseList :: Parser LispVal
+parseList = List <$> sepBy parseExpr spaces
+
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- endBy parseExpr spaces
+  tail <- char '.' >> spaces >> parseExpr
+  return $ DottedList head tail
+
 parseExpr :: Parser LispVal
-parseExpr = parseAtom <|> parseCharacter <|> parseString <|> parseNumber 
+parseExpr =
+  parseAtom
+    <|> parseCharacter
+    <|> parseString
+    <|> parseQuoted
+    <|> do
+      char '('
+      x <- try parseList <|> parseDottedList
+      char ')'
+      return x
+    -- <|> parseFloat -- TODO fix
+    <|> parseNumber
 
 -- spaces :: Parser ()
 -- spaces = skipMany1 space
@@ -131,6 +152,11 @@ readExpr input = case parse parseExpr "lisp" input of
   Left err -> "No match: " ++ show err
   Right val -> "Found value: " ++ show val
 
+test = readExpr "(dotted a . list)"
+
+-- >>> test
+-- "No match: \"lisp\" (line 1, column 12):\nunexpected \" \"\nexpecting digit\nno matching floating number"
+
 main :: IO ()
 -- main = putStrLn $ readExpr "\n \n123"
 main = do
@@ -139,3 +165,9 @@ main = do
     $ if null args
       then "no args"
       else readExpr (head args)
+
+-- TODO Измените parseNumber для поддержки стандарта Scheme для разных оснований. Вы, возможно, найдёте readOct и readHex функции полезными.
+-- http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4
+
+-- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4
+-- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.1
