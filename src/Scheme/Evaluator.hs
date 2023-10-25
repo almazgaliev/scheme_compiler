@@ -22,11 +22,51 @@ primitives =
   , ("mod", numericBinop mod)
   , ("quotient", numericBinop quot)
   , ("remainder", numericBinop rem) -- TODO float number operators
+  , ("not", notOp)
+  , ("boolean?", checkBool)
+  , ("string?", checkString)
+  -- , ("car", carOp) -- TODO fix
+  -- , ("cdr", cdrOp) -- TODO fix
+  -- , ("symbol?", checkSymbol) -- TODO implement
+  -- , ("number?", checkNumber) -- TODO implement
   ]
+
+notOp :: [LispVal] -> LispVal
+notOp [Bool False] = Bool True
+notOp [Bool True] = Bool False
+notOp [_] = Bool False
+notOp a = error $ "wrong number of arguments: not requires 1, but got " ++ show (length a)
+
+checkBool :: [LispVal] -> LispVal
+checkBool [Bool _] = Bool True
+checkBool [_] = Bool False
+checkBool a = error $ "wrong number of arguments for #<subr (boolean? obj)> (required 1, got " ++ show (length a) ++ ")"
+
+checkString :: [LispVal] -> LispVal
+checkString [String _] = Bool True
+checkString [_] = Bool False
+checkString a = error $ " wrong number of arguments: string? requires 1, but got " ++ show (length a)
+
+-- checkSymbol :: [LispVal] -> LispVal
+-- checkSymbol [Atom _] = Bool True
+-- checkSymbol [_] = Bool False
+-- checkSymbol a = error $ "wrong number of arguments for #<subr (boolean? obj)> (required 1, got " ++ show (length a) ++ ")"
+
+carOp :: [LispVal] -> LispVal
+carOp xs
+  | not (null xs) = head xs
+  | otherwise = error "pair required, but got ()"
+
+cdrOp :: [LispVal] -> LispVal
+cdrOp xs
+  | not (null xs) = List $ tail xs
+  | otherwise = error "pair required, but got ()"
+
+-- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3 untill 6.5
 
 -- numericBinop (+) :: [LispVal] -> LispVal
 -- numericBinop :: (a -> a -> a) -> [LispVal] -> LispVal
-numericBinop op params = IntegerNumber $ value
+numericBinop op params = IntegerNumber value
  where
   floatParams = map unpackNum params
   value = foldl1 op floatParams
