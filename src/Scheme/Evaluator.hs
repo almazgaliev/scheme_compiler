@@ -21,13 +21,37 @@ primitives =
   , ("/", numericBinop div)
   , ("mod", numericBinop mod)
   , ("quotient", numericBinop quot)
-  , ("remainder", numericBinop rem)
+  , ("remainder", numericBinop rem) -- TODO float number operators
   ]
 
 -- numericBinop (+) :: [LispVal] -> LispVal
 -- numericBinop :: (a -> a -> a) -> [LispVal] -> LispVal
-numericBinop :: (Num a) => (a -> a -> a) -> [LispVal] -> LispVal
-numericBinop op params = Number $ foldl1 op $ map unpackNum params
+numericBinop op params = IntegerNumber $ value
+ where
+  floatParams = map unpackNum params
+  value = foldl1 op floatParams
 
--- либо все числа сделать Number
--- либо обрабатывать как то IntegerNumber и FloatNumber отдельно
+unpackNum (IntegerNumber val) = fromIntegral val
+unpackNum (FloatNumber val) = floor val
+unpackNum (String n) =
+  let parsed = reads n :: [(Integer, String)]
+   in if null parsed
+        then 0
+        else fst $ head parsed
+unpackNum (List [n]) = unpackNum n
+unpackNum _ = 0
+
+unpackFloatNum :: LispVal -> Float
+unpackFloatNum (FloatNumber val) = val
+unpackFloatNum (IntegerNumber val) = fromIntegral val
+unpackFloatNum (String n) =
+  let parsed = reads n :: [(Float, String)]
+   in if null parsed
+        then 0
+        else fst $ head parsed
+unpackFloatNum (List [n]) = unpackFloatNum n
+unpackFloatNum _ = 0
+
+numericCast :: LispVal -> LispVal
+numericCast (IntegerNumber num) = FloatNumber (fromIntegral num)
+numericCast a = a
