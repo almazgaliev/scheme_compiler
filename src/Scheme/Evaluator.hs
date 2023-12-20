@@ -12,16 +12,17 @@ eval (List (Atom func : args)) = apply func $ map eval args
 
 apply :: String -> [LispVal] -> LispVal
 apply func args = maybe (Bool False) ($ args) $ lookup func primitives
+-- TODO implement ADL
 
 primitives :: [(String, [LispVal] -> LispVal)]
 primitives =
-  [ ("+", numericBinop (+))
-  , ("-", numericBinop (-))
-  , ("*", numericBinop (*))
-  , ("/", numericBinop div)
-  , ("mod", numericBinop mod)
-  , ("quotient", numericBinop quot)
-  , ("remainder", numericBinop rem) -- TODO float number operators
+  [ ("+", floatBinop (+))
+  , ("-", floatBinop (-))
+  , ("*", floatBinop (*))
+  , ("/", integerBinop div)
+  , ("mod", integerBinop mod)
+  , ("quotient", integerBinop quot)
+  , ("remainder", integerBinop rem) -- TODO float number operators
   , ("not", notOp)
   , ("boolean?", checkBool)
   , ("string?", checkString)
@@ -65,25 +66,18 @@ cdrOp xs
 -- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3 untill 6.5
 
 -- numericBinop (+) :: [LispVal] -> LispVal
--- numericBinop :: (a -> a -> a) -> [LispVal] -> LispVal
-numericBinop op params = IntegerNumber value
+floatBinop op params = FloatNumber value
  where
-  floatParams = map unpackNum params
+  floatParams = map unpackFloatNum params
   value = foldl1 op floatParams
 
-unpackNum (IntegerNumber val) = fromIntegral val
-unpackNum (FloatNumber val) = floor val
-unpackNum (String n) =
-  let parsed = reads n :: [(Integer, String)]
-   in if null parsed
-        then 0
-        else fst $ head parsed
-unpackNum (List [n]) = unpackNum n
-unpackNum _ = 0
+integerBinop op params = IntegerNumber value
+ where
+  intParams = map unpackIntNum params
+  value = foldl1 op intParams
 
-unpackFloatNum :: LispVal -> Float
-unpackFloatNum (FloatNumber val) = val
 unpackFloatNum (IntegerNumber val) = fromIntegral val
+unpackFloatNum (FloatNumber val) = val
 unpackFloatNum (String n) =
   let parsed = reads n :: [(Float, String)]
    in if null parsed
@@ -91,6 +85,17 @@ unpackFloatNum (String n) =
         else fst $ head parsed
 unpackFloatNum (List [n]) = unpackFloatNum n
 unpackFloatNum _ = 0
+
+unpackIntNum :: LispVal -> Integer
+unpackIntNum (FloatNumber val) = floor val
+unpackIntNum (IntegerNumber val) = fromIntegral val
+unpackIntNum (String n) =
+  let parsed = reads n :: [(Integer, String)]
+   in if null parsed
+        then 0
+        else fst $ head parsed
+unpackIntNum (List [n]) = unpackIntNum n
+unpackIntNum _ = 0
 
 numericCast :: LispVal -> LispVal
 numericCast (IntegerNumber num) = FloatNumber (fromIntegral num)
