@@ -35,6 +35,7 @@ instance Show LispVal where
   show (List contents) = "(" ++ unwordsList contents ++ ")"
   show (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ show tail ++ ")"
 
+unwordsList :: [LispVal] -> String
 unwordsList = unwords . map show
 
 parseString' :: Parser LispVal
@@ -86,7 +87,7 @@ parseAtom = do
     _ -> Atom atom
 
 parseNumber :: Parser LispVal
-parseNumber = try parseFloat <|> IntegerNumber . read <$> many1 digit
+parseNumber = try parseFloat <|> (IntegerNumber . read <$> many1 digit)
 
 -- TODO implement s f d l e literals
 parseFloat :: Parser LispVal
@@ -118,7 +119,7 @@ parseCharacter = do
   return $ Character $ case ch of
     "newline" -> '\n'
     "space" -> ' '
-    chars -> head chars
+    chars -> head chars -- ???
 
 parseQuoted :: Parser LispVal
 parseQuoted = do
@@ -132,13 +133,23 @@ testCharacter = parse (many parseCharacter) "error" "#\\newline#\\5"
 -- Right [#\n,#\5]
 
 parseList :: Parser LispVal
-parseList = List <$> sepBy parseExpr spaces
+-- parseList = List <$> sepBy parseExpr spaces
+parseList = do
+  result <- sepBy parseExpr spaces
+  return $ List result
 
 parseDottedList :: Parser LispVal
 parseDottedList = do
-  head <- endBy parseExpr spaces
-  tail <- char '.' >> spaces >> parseExpr
-  return $ DottedList head tail
+  init <- endBy parseExpr spaces
+  last <- char '.' >> spaces >> parseExpr
+  return $ DottedList init last
+
+parseListInBrackets :: Parser LispVal
+parseListInBrackets = do
+  char '('
+  x <- try parseList <|> parseDottedList
+  char ')'
+  return x
 
 parseExpr :: Parser LispVal
 parseExpr =
@@ -147,8 +158,7 @@ parseExpr =
     <|> parseString
     <|> parseNumber
     <|> parseQuoted
-    <|> do
-      char '('
-      x <- try parseList <|> parseDottedList
-      char ')'
-      return x
+    <|> parseListInBrackets
+
+-- >>> :t (<|>)
+-- (<|>) :: ParsecT s u m a -> ParsecT s u m a -> ParsecT s u m a
