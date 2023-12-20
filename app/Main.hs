@@ -2,8 +2,9 @@ module Main where
 
 import Scheme.Evaluator (eval)
 import Scheme.Parser (LispVal, parseExpr)
-import System.Environment
-import Text.Parsec
+import System.Environment ( getArgs )
+import Text.Parsec ( parse, ParseError )
+
 
 -- spaces :: Parser ()
 -- spaces = skipMany1 space
