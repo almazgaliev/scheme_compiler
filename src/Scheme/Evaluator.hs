@@ -92,12 +92,16 @@ cdrOp xs
 -- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.3 untill 6.5
 
 floatBinop :: (Float -> Float -> Float) -> [LispVal] -> ThrowsError LispVal
+floatBinop op val@[] = throwError $ NumArgs 2 val
+floatBinop op val@[_] = throwError $ NumArgs 2 val
 floatBinop op params =
   do
     floatParams <- mapM unpackFloatNum params
     let value = foldl1 op floatParams
     return $ FloatNumber value
 
+integerBinop op val@[] = throwError $ NumArgs 2 val
+integerBinop op val@[_] = throwError $ NumArgs 2 val
 integerBinop op params = do
   intParams <- mapM unpackIntNum params
   let value = foldl1 op intParams
