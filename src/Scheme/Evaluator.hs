@@ -39,10 +39,50 @@ primitives =
   , ("string?", checkString)
   , ("list?", checkList)
   , ("number?", checkNumber)
+  , ("=", numBoolBinop (==))
+  , ("<", numBoolBinop (<))
+  , (">", numBoolBinop (>))
+  , ("/=", numBoolBinop (/=))
+  , (">=", numBoolBinop (>=))
+  , ("<=", numBoolBinop (<=))
+  , ("&&", boolBoolBinop (&&))
+  , ("||", boolBoolBinop (||))
+  , ("string=?", strBoolBinop (==))
+  , ("string<?", strBoolBinop (<))
+  , ("string>?", strBoolBinop (>))
+  , ("string<=?", strBoolBinop (<=))
+  , ("string>=?", strBoolBinop (>=))
   -- ("symbol?", checkSymbol) -- TODO implement
   -- , ("car", carOp)
   -- , ("cdr", cdrOp)
   ]
+
+boolBinop :: (LispVal -> ThrowsError a) -> (a -> a -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBinop unpacker op [left', right'] = do
+  left <- unpacker left'
+  right <- unpacker right'
+  return $ Bool $ left `op` right
+boolBinop unpacker _ args = throwError $ NumArgs 2 args
+
+numBoolBinop :: (Float -> Float -> Bool) -> [LispVal] -> ThrowsError LispVal
+numBoolBinop = boolBinop unpackFloatNum
+
+strBoolBinop :: (String -> String -> Bool) -> [LispVal] -> ThrowsError LispVal
+strBoolBinop = boolBinop unpackString
+
+boolBoolBinop :: (Bool -> Bool -> Bool) -> [LispVal] -> ThrowsError LispVal
+boolBoolBinop = boolBinop unpackBool
+
+unpackString :: LispVal -> ThrowsError String
+unpackString (String s) = return s
+unpackString (FloatNumber s) = return $ show s
+unpackString (IntegerNumber s) = return $ show (fromIntegral s :: Float)
+unpackString (Bool s) = return $ show s
+unpackString val = throwError $ TypeMismatch "String" val
+
+unpackBool :: LispVal -> ThrowsError Bool
+unpackBool (Bool v) = return v
+unpackBool val = throwError $ TypeMismatch "Bool" val
 
 notOp :: [LispVal] -> ThrowsError LispVal
 notOp [Bool False] = return $ Bool True
@@ -118,6 +158,7 @@ unpackFloatNum val@(String n) =
 unpackFloatNum (List [n]) = unpackFloatNum n
 unpackFloatNum val = throwError $ TypeMismatch "Float" val
 
+-- TODO remove
 unpackIntNum :: LispVal -> ThrowsError Integer
 unpackIntNum (IntegerNumber val) = return $ fromIntegral val
 unpackIntNum (FloatNumber val) = return $ floor val
