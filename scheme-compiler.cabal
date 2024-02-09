@@ -26,12 +26,14 @@ executable scheme-compiler
 
     -- Modules included in this executable, other than Main.
     other-modules: Scheme.Evaluator ,
-                   Scheme.Parser
+                   Scheme.Parser,
+                   Scheme.Errors
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    base ^>=4.17.2.0 ,
-                      parsec
+                      parsec ^>= 3.1.16.1,
+                      mtl ^>= 2.2.2
     hs-source-dirs:   app ,
                       src
     default-language: Haskell2010

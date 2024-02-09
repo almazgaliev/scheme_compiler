@@ -1,4 +1,4 @@
-module Scheme.Parser (parseExpr, LispVal (..)) where
+module Scheme.Parser (parseExpr, LispVal (..), unwordsList, PrettyPrint (..)) where
 
 import Control.Monad (when)
 import Data.Either (fromRight)
@@ -22,18 +22,32 @@ data LispVal
   | String String
   | Bool Bool
   | Character Char
+  deriving (Show, Eq)
 
-instance Show LispVal where
-  show (String contents) = "\"" ++ contents ++ "\""
-  show (Atom name) = name
-  show (IntegerNumber contents) = show contents
-  show (FloatNumber contents) = show contents
-  show (Bool True) = "#t"
-  show (Bool False) = "#f"
-  show (Character '\n') = "#\\n"
-  show (Character ch) = "#\\" ++ [ch]
-  show (List contents) = "(" ++ unwordsList contents ++ ")"
-  show (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ show tail ++ ")"
+-- >>> PrettyPrint $ List [List [String "a"], String "b"]
+-- (("a") "b")
+
+newtype PrettyPrint = PrettyPrint {getPrintable :: LispVal}
+
+instance Show PrettyPrint where
+  show = costyl . getPrintable
+   where
+    costyl (List xs) = "(" ++ unwords (map (show . PrettyPrint) xs) ++ ")"
+    costyl x = showVal x
+
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name) = name
+showVal (IntegerNumber contents) = show contents
+showVal (FloatNumber contents) = show contents
+showVal (Bool True) = "#t"
+showVal (Bool False) = "#f"
+showVal (Character '\n') = "#\\n"
+showVal (Character ch) = "#\\" ++ [ch]
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ show tail ++ ")"
+
+-- instance Show LispVal where show = showVal
 
 unwordsList :: [LispVal] -> String
 unwordsList = unwords . map show

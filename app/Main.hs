@@ -1,34 +1,55 @@
 module Main where
 
+import Control.Applicative (Applicative (liftA2))
+import Control.Monad (liftM)
+import Control.Monad.Except (MonadError (throwError), catchError)
+import Scheme.Errors (LispError (Parser), ThrowsError)
 import Scheme.Evaluator (eval)
-import Scheme.Parser (LispVal, parseExpr)
-import System.Environment ( getArgs )
-import Text.Parsec ( parse, ParseError )
+import Scheme.Parser (LispVal, PrettyPrint (..), parseExpr)
+import System.Environment (getArgs)
+import Text.Parsec (ParseError, parse)
 
-
--- spaces :: Parser ()
--- spaces = skipMany1 space
-
-readExpr :: String -> String
+readExpr :: String -> ThrowsError LispVal
 readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right val -> "Found value: " ++ show val
+  Left err -> throwError $ Parser err
+  Right val -> return val
 
 readExpr' :: String -> Either ParseError LispVal
 readExpr' = parse parseExpr "lisp"
 
-test = readExpr "(a a . 2)"
+trapError action = catchError action (return . show)
+
+extractValue :: ThrowsError a -> a
+extractValue (Right val) = val
 
 main :: IO ()
 main = do
   args <- getArgs
-  print
-    $ if null args
-      then "no args"
-      else show $ eval <$> readExpr' (head args)
+  putStrLn $
+    if null args
+      then "No arguments provided"
+      else
+        let evaled = show . PrettyPrint <$> (eval =<< readExpr (head args))
+         in extractValue $ trapError evaled
 
 -- TODO Измените parseNumber для поддержки стандарта Scheme для разных оснований. Вы, возможно, найдёте readOct и readHex функции полезными.
 -- http://www.schemers.org/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4
-
 -- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.4
 -- TODO https://conservatory.scheme.org/schemers/Documents/Standards/R5RS/HTML/r5rs-Z-H-9.html#%_sec_6.2.1
+
+symbolTests =
+  [ ("(symbol? 'foo)", "#t")
+  , ("(symbol? (car '(a b)))", "#t")
+  , ("(symbol? \"bar\")", "#f")
+  , ("(symbol? 'nil)", "#t")
+  , ("(symbol? '())", "#f")
+  , ("(symbol? #f)", "#f")
+  ]
+
+symbolTestResults = map (\(x, y) -> eval <$> readExpr' x) symbolTests
+
+-- >>> symbolTestResults
+-- [Right (Bool False),Right (Bool False),Right (Bool False),Right (Bool False),Right (Bool False),Right (Bool False)]
+
+-- >>> readExpr' "('a)"
+-- Right (List [List [Atom "quote",Atom "a"]])
