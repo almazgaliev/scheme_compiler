@@ -50,7 +50,7 @@ showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ show tail +
 -- instance Show LispVal where show = showVal
 
 unwordsList :: [LispVal] -> String
-unwordsList = unwords . map show
+unwordsList = unwords . map (show . PrettyPrint)
 
 parseString' :: Parser LispVal
 parseString' = do

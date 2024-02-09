@@ -3,7 +3,7 @@ module Main where
 import Control.Applicative (Applicative (liftA2))
 import Control.Monad (liftM)
 import Control.Monad.Except (MonadError (throwError), catchError)
-import Scheme.Errors (LispError (Parser), ThrowsError)
+import Scheme.Errors (LispError (Parser), ThrowsError, extractValue, trapError)
 import Scheme.Evaluator (eval)
 import Scheme.Parser (LispVal, PrettyPrint (..), parseExpr)
 import System.Environment (getArgs)
@@ -16,11 +16,6 @@ readExpr input = case parse parseExpr "lisp" input of
 
 readExpr' :: String -> Either ParseError LispVal
 readExpr' = parse parseExpr "lisp"
-
-trapError action = catchError action (return . show)
-
-extractValue :: ThrowsError a -> a
-extractValue (Right val) = val
 
 main :: IO ()
 main = do
