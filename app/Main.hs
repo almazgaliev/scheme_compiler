@@ -5,7 +5,9 @@ import Control.Monad (liftM)
 import Control.Monad.Except (MonadError (throwError), catchError)
 import Scheme.Errors (LispError (Parser), ThrowsError, extractValue, trapError)
 import Scheme.Evaluator (eval)
-import Scheme.Parser (LispVal, PrettyPrint (..), parseExpr)
+import Scheme.LispVal (LispVal, PrettyPrint (PrettyPrint))
+import Scheme.Parser (parseExpr)
+
 import System.Environment (getArgs)
 import Text.Parsec (ParseError, parse)
 

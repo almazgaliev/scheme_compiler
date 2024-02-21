@@ -1,10 +1,11 @@
-module Scheme.Parser (parseExpr, LispVal (..), unwordsList, PrettyPrint (..)) where
+module Scheme.Parser where
 
 import Control.Monad (when)
 import Data.Either (fromRight)
 import Data.List (intercalate)
 import Data.Maybe (fromJust, fromMaybe, isJust, isNothing)
 import Numeric (readFloat)
+import Scheme.LispVal (LispVal (..))
 import Text.Parsec (string')
 import Text.ParserCombinators.Parsec
 import Text.ParserCombinators.ReadPrec (reset)
@@ -13,44 +14,8 @@ import Text.Read (readMaybe)
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
-data LispVal
-  = Atom String
-  | List [LispVal]
-  | DottedList [LispVal] LispVal
-  | IntegerNumber Integer
-  | FloatNumber Float
-  | String String
-  | Bool Bool
-  | Character Char
-  deriving (Show, Eq)
-
 -- >>> PrettyPrint $ List [List [String "a"], String "b"]
 -- (("a") "b")
-
-newtype PrettyPrint = PrettyPrint {getPrintable :: LispVal}
-
-instance Show PrettyPrint where
-  show = costyl . getPrintable
-   where
-    costyl (List xs) = "(" ++ unwords (map (show . PrettyPrint) xs) ++ ")"
-    costyl x = showVal x
-
-showVal :: LispVal -> String
-showVal (String contents) = "\"" ++ contents ++ "\""
-showVal (Atom name) = name
-showVal (IntegerNumber contents) = show contents
-showVal (FloatNumber contents) = show contents
-showVal (Bool True) = "#t"
-showVal (Bool False) = "#f"
-showVal (Character '\n') = "#\\n"
-showVal (Character ch) = "#\\" ++ [ch]
-showVal (List contents) = "(" ++ unwordsList contents ++ ")"
-showVal (DottedList head tail) = "(" ++ unwordsList head ++ " . " ++ show tail ++ ")"
-
--- instance Show LispVal where show = showVal
-
-unwordsList :: [LispVal] -> String
-unwordsList = unwords . map (show . PrettyPrint)
 
 parseString' :: Parser LispVal
 parseString' = do

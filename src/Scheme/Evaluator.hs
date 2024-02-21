@@ -3,7 +3,7 @@ module Scheme.Evaluator (eval) where
 import Control.Monad.Except (MonadError (throwError))
 import Debug.Trace
 import Scheme.Errors (LispError (..), ThrowsError)
-import Scheme.Parser (LispVal (..))
+import Scheme.LispVal (LispVal (..))
 
 -- = Atom String
 eval :: LispVal -> ThrowsError LispVal

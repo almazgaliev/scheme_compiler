@@ -1,7 +1,11 @@
 module Scheme.Errors where
 
 import Control.Monad.Except
-import Scheme.Parser (LispVal, PrettyPrint (PrettyPrint), unwordsList)
+import Scheme.LispVal (
+  LispVal,
+  PrettyPrint (PrettyPrint),
+  unwordsList,
+ )
 import Text.Parsec (ParseError)
 
 data LispError
